@@ -1,7 +1,12 @@
-import connectDb from "./db/db_config.js";
+import connectDb from "./db/db-config.js";
 
 // console.log("env------------");
 
-connectDb();
+connectDb()
+.then()
+.catch((err) => {
+    console.log("MONGODB Connection Failed: ", err);
+    
+})
 
 
