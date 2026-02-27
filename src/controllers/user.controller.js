@@ -1,6 +1,7 @@
 import { asyncHandler } from "../utils/async-handler.js";
 import { ApiResponse } from "../utils/api-response.js";
-import { registerUserService } from "../services/user.service.js";
+import { registerUserService, loginUser, logoutUser} from "../services/user.service.js";
+import { SUCCESS } from "../constant.js";
 
 
 const registerUser = asyncHandler(async (req, res) => {
@@ -10,7 +11,7 @@ const registerUser = asyncHandler(async (req, res) => {
     // parse the files and upload to cloudinary: avatar & cover image
     // encrypt the password
     // save the user details in mongoDB
-    // generate access token
+    // return the response
     const user = await registerUserService(req.body, req.files);
 
     res.status(201).json(
@@ -18,6 +19,55 @@ const registerUser = asyncHandler(async (req, res) => {
     );
 });
 
+const loginUser = asyncHandler(async (req, res) => {
+    // fetch data from body -- username/email, password
+    // add validation for data
+    // check if username or email is registered or not
+    // if registered check if password is valid or not
+    // if passwword correct generate the access and refresh token
+    // send cookies in the response
+    const [accessToken, refreshToken] = await loginUser(req.body);
+
+    const options = {
+        httpOnly: true,
+        secure: true
+    };
+
+    res.status(SUCCESS.OK)
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", refreshToken, options)
+    .json(
+        new ApiResponse(
+            SUCCESS.OK,
+            {
+                accessToken,
+                refreshToken
+            },
+            "User loggedIn successfully."
+        )
+    );
+});
+
+const logoutUser = asyncHandler(async (req, res) => {
+    await logoutUser(req.user);
+
+    const options = {
+        httpOnly: true,
+        secure: true
+    };
+
+    res.status(SUCCESS.OK)
+    .clearCookie("accessToken")
+    .clearCookie("refreshToken")
+    .json(new ApiResponse(
+        SUCCESS.OK,
+        {},
+        "User logged out."
+    ))
+})
+
 export {
-    registerUser
+    registerUser,
+    loginUser,
+    logoutUser
 }
