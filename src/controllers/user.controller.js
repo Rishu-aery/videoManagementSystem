@@ -1,6 +1,6 @@
 import { asyncHandler } from "../utils/async-handler.js";
 import { ApiResponse } from "../utils/api-response.js";
-import { registerUserService, loginUser, logoutUser} from "../services/user.service.js";
+import { registerUserService, loginUserService, logoutUserService} from "../services/user.service.js";
 import { SUCCESS } from "../constant.js";
 
 
@@ -26,7 +26,7 @@ const loginUser = asyncHandler(async (req, res) => {
     // if registered check if password is valid or not
     // if passwword correct generate the access and refresh token
     // send cookies in the response
-    const [accessToken, refreshToken] = await loginUser(req.body);
+    const {accessToken, refreshToken} = await loginUserService(req.body);
 
     const options = {
         httpOnly: true,
@@ -49,7 +49,7 @@ const loginUser = asyncHandler(async (req, res) => {
 });
 
 const logoutUser = asyncHandler(async (req, res) => {
-    await logoutUser(req.user);
+    await logoutUserService(req.user);
 
     const options = {
         httpOnly: true,
@@ -57,8 +57,8 @@ const logoutUser = asyncHandler(async (req, res) => {
     };
 
     res.status(SUCCESS.OK)
-    .clearCookie("accessToken")
-    .clearCookie("refreshToken")
+    .clearCookie("accessToken", options)
+    .clearCookie("refreshToken", options)
     .json(new ApiResponse(
         SUCCESS.OK,
         {},

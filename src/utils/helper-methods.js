@@ -5,6 +5,7 @@ const generateAccessAndRefreshToken = (user) => {
         if (!accessToken || !refreshToken) {
             throw new Error("Error generating tokens.")
         }
+        user.refreshToken = refreshToken;
         user.save({validateBeforeSaving: false})
         return {accessToken, refreshToken};
     } catch (error) {

@@ -60,16 +60,18 @@ const registerUserService = async (data, files) => {
     }
 };
 
-const loginUser = async (data) => {
+const loginUserService = async (data) => {
     try {
-        const [username, email, password] = data;
+        console.log("data----------", data);
+        
+        const {username, email, password} = data;
 
         if ((!username && !email) || !password) {
             throw new ApiError(CLIENT_ERROR.BAD_REQUEST_ERROR, "Missing Required Fields: [username/email, password]");
         }
 
         const user = await User.findOne({
-            $or: {username, email}
+            $or: [{username}, {email}]
         });
 
         if (!user) {
@@ -87,7 +89,7 @@ const loginUser = async (data) => {
         return tokens;
     
     } catch (error) {
-        console.error("Login Error:", error);
+        console.error("Login Service Error:", error);
         if (error instanceof ApiError) {
             throw error;
         }
@@ -98,7 +100,7 @@ const loginUser = async (data) => {
     }
 }
 
-const logoutUser = async (user) => {
+const logoutUserService = async (user) => {
     try {
         await User.findByIdAndUpdate(
             user._id,
@@ -114,6 +116,6 @@ const logoutUser = async (user) => {
 
 export {
     registerUserService,
-    loginUser,
-    logoutUser
+    loginUserService,
+    logoutUserService
 }

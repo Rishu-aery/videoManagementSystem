@@ -69,7 +69,7 @@ userSchema.methods.generateAccessToken = function() {
             id: this._id,
             username: this.username,
             email: this.email,
-            fullName: fullName
+            fullName: this.fullName
         },
         ACCESS_TOKEN_SECRETE,
         {
