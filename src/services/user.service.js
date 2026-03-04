@@ -62,8 +62,6 @@ const registerUserService = async (data, files) => {
 
 const loginUserService = async (data) => {
     try {
-        console.log("data----------", data);
-        
         const {username, email, password} = data;
 
         if ((!username && !email) || !password) {
@@ -114,8 +112,29 @@ const logoutUserService = async (user) => {
     }
 }
 
+const refreshAccessTokenService = (incomingToken, user) => {
+    try {
+        if (incomingToken !== user.refreshToken) {
+            throw new ApiError(CLIENT_ERROR.UNAUTHORIZED, "Refresh token does not match or used already");
+        }
+
+        const refreshedTokens = generateAccessAndRefreshToken(user);
+        return refreshedTokens;
+    } catch (error) {
+        console.error("Refresh Service Error:", error);
+        if (error instanceof ApiError) {
+            throw error;
+        }
+        throw new ApiError(
+            SERVER_ERROR.INTERNAL_SERVER_ERROR,
+            "Invallid Credentials!"
+        );
+    }
+}
+
 export {
     registerUserService,
     loginUserService,
-    logoutUserService
+    logoutUserService,
+    refreshAccessTokenService
 }

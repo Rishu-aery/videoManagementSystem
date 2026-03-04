@@ -1,7 +1,16 @@
 import { asyncHandler } from "../utils/async-handler.js";
 import { ApiResponse } from "../utils/api-response.js";
-import { registerUserService, loginUserService, logoutUserService} from "../services/user.service.js";
+import { registerUserService,
+    loginUserService,
+    logoutUserService,
+    refreshAccessTokenService
+} from "../services/user.service.js";
 import { SUCCESS } from "../constant.js";
+
+const cookieOptions = {
+    httpOnly: true,
+    secure: true
+};
 
 
 const registerUser = asyncHandler(async (req, res) => {
@@ -28,14 +37,9 @@ const loginUser = asyncHandler(async (req, res) => {
     // send cookies in the response
     const {accessToken, refreshToken} = await loginUserService(req.body);
 
-    const options = {
-        httpOnly: true,
-        secure: true
-    };
-
     res.status(SUCCESS.OK)
-    .cookie("accessToken", accessToken, options)
-    .cookie("refreshToken", refreshToken, options)
+    .cookie("accessToken", accessToken, cookieOptions)
+    .cookie("refreshToken", refreshToken, cookieOptions)
     .json(
         new ApiResponse(
             SUCCESS.OK,
@@ -51,23 +55,45 @@ const loginUser = asyncHandler(async (req, res) => {
 const logoutUser = asyncHandler(async (req, res) => {
     await logoutUserService(req.user);
 
-    const options = {
-        httpOnly: true,
-        secure: true
-    };
-
     res.status(SUCCESS.OK)
-    .clearCookie("accessToken", options)
-    .clearCookie("refreshToken", options)
+    .clearCookie("accessToken", cookieOptions)
+    .clearCookie("refreshToken", cookieOptions)
     .json(new ApiResponse(
         SUCCESS.OK,
         {},
         "User logged out."
     ))
+});
+
+const refreshAccessToken = asyncHandler((req, res) => {
+    // fetch refresh token from cookies or header
+    // check token is available in request
+    // verify refrest token using jwt
+    // if token is valid find user with that token in db
+    // check if user exist
+    // if yes match the req token with saved token
+    // if matched generate the new access token and refresh token
+    // returnthe token in response
+    const { accessToken, refreshToken } = refreshAccessTokenService(req.token, req.user);
+
+    res.status(SUCCESS.OK)
+    .cookie("accessToken", accessToken, cookieOptions)
+    .cookie("refreshToken", refreshToken, cookieOptions)
+    .json(
+        new ApiResponse(
+            SUCCESS.OK,
+            {
+                accessToken,
+                refreshToken
+            },
+            "Token refreshed Successfully"
+        )
+    );
 })
 
 export {
     registerUser,
     loginUser,
-    logoutUser
+    logoutUser,
+    refreshAccessToken
 }
