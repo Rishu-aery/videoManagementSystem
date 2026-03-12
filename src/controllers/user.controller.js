@@ -3,9 +3,13 @@ import { ApiResponse } from "../utils/api-response.js";
 import { registerUserService,
     loginUserService,
     logoutUserService,
-    refreshAccessTokenService
+    refreshAccessTokenService,
+    changePasswordService,
+    updateAccountDetailsService,
+    updateImageService
 } from "../services/user.service.js";
-import { SUCCESS } from "../constant.js";
+import { CLIENT_ERROR, SUCCESS } from "../constant.js";
+import { ApiError } from "../utils/api-error.js";
 
 const cookieOptions = {
     httpOnly: true,
@@ -65,7 +69,7 @@ const logoutUser = asyncHandler(async (req, res) => {
     ))
 });
 
-const refreshAccessToken = asyncHandler((req, res) => {
+const refreshAccessToken = asyncHandler(async (req, res) => {
     // fetch refresh token from cookies or header
     // check token is available in request
     // verify refrest token using jwt
@@ -89,11 +93,89 @@ const refreshAccessToken = asyncHandler((req, res) => {
             "Token refreshed Successfully"
         )
     );
-})
+});
+
+const changePassword = asyncHandler(async (req, res) => {
+    // check if user is authorized or not using auth middleware
+    // fetch old and new password from request
+    // validate new and old password should not be same and required
+    // check if the old password is correct.
+    // if correct, update the old password with new password
+    // return the success response
+
+    const {oldPassword, newPassword} = req.body;
+
+    if ((!oldPassword || !newPassword) || (oldPassword === newPassword)) {
+        throw new ApiError(CLIENT_ERROR.BAD_REQUEST_ERROR, "oldPassword and newPassword is required and should not be same");
+    }
+
+    await changePasswordService(oldPassword, newPassword, req.user?._id);
+
+    res.status(SUCCESS.OK).json(new ApiResponse(SUCCESS.OK, {}, "Password Updated Successfully."));
+});
+
+const getCurrentUser = asyncHandler(async (req,res) => {
+    res.status(SUCCESS.OK).json(new ApiResponse(SUCCESS.OK, req.user, "Fetched current user info."));
+});
+
+const updateAccountDetails = asyncHandler(async (req, res) => {
+    const {fullName, email} = req.body;
+    if (!fullName && !email) {
+        throw new ApiError(CLIENT_ERROR.BAD_REQUEST_ERROR, "Atleast One of the field is required [fullName, email].");
+    }
+
+    const user = await updateAccountDetailsService(req.body, req?.user?._id);
+
+    res.status(SUCCESS.CREATED).json(new ApiResponse(
+        SUCCESS.CREATED,
+        user,
+        "User updated successfully"
+    ));
+});
+
+const updateAvatarImage = asyncHandler(async (req, res) => {
+    const avatarLocalPath = req.file.path;
+    console.log("avatarLocalPath------", avatarLocalPath);
+    if (!avatarLocalPath) {
+        throw new ApiError(CLIENT_ERROR.BAD_REQUEST_ERROR, "Avatar image is required.");
+    }
+
+    const user = await updateImageService(avatarLocalPath, req.user?._id);
+
+    res.status(SUCCESS.CREATED).json(new ApiResponse(
+        SUCCESS.CREATED,
+        user,
+        "Avatar image updated successfully."
+    ));
+    
+});
+
+const updateCoverImage = asyncHandler(async (req, res) => {
+    const coverImageLocalPath = req.file.path;
+    console.log("coverImageLocalPath------", coverImageLocalPath);
+    if (!coverImageLocalPath) {
+        throw new ApiError(CLIENT_ERROR.BAD_REQUEST_ERROR, "Cover image is required.");
+    }
+
+    const user = await updateImageService(coverImageLocalPath, req.user?._id);
+
+    res.status(SUCCESS.CREATED).json(new ApiResponse(
+        SUCCESS.CREATED,
+        user,
+        "Cover image updated successfully."
+    ));
+    
+});
+
 
 export {
     registerUser,
     loginUser,
     logoutUser,
-    refreshAccessToken
+    refreshAccessToken,
+    changePassword,
+    getCurrentUser,
+    updateAccountDetails,
+    updateAvatarImage,
+    updateCoverImage
 }

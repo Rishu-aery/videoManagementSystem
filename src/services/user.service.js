@@ -132,9 +132,88 @@ const refreshAccessTokenService = (incomingToken, user) => {
     }
 }
 
+const changePasswordService = async (oldPassword, newPassword, userId) => {
+    try {
+        const user = await User.findById(userId);
+        const isPasswordCorrect = await user.isPasswordCorrect(oldPassword);
+        if (!isPasswordCorrect) {
+            throw new ApiError(CLIENT_ERROR.UNAUTHORIZED, "Incorrect Old Password!");            
+        }
+
+        user.password = newPassword;
+        await user.save({validateBeforeSaving: false});
+    } catch (error) {
+        console.error("Change Password Service Error:", error);
+        if (error instanceof ApiError) {
+            throw error;
+        }
+        throw new ApiError(
+            SERVER_ERROR.INTERNAL_SERVER_ERROR,
+            "Something went wrong while updating password."
+        );
+    }
+}
+
+const updateAccountDetailsService = async (data, userId) => {
+    try {
+        const user = await  User.findByIdAndUpdate(
+            userId,
+            {
+                $set: {
+                    fullName: data?.fullName,
+                    email: data?.email
+                }
+            },
+            {new: true}
+        ).select("-password");
+
+        return user;
+    } catch (error) {
+        console.error("Update User Service Error:", error);
+        if (error instanceof ApiError) {
+            throw error;
+        }
+        throw new ApiError(
+            SERVER_ERROR.INTERNAL_SERVER_ERROR,
+            "Something went wrong while updating account details."
+        );
+    }
+}
+
+const updateImageService = async (localFilePath, userId) => {
+    try {
+        const imageUrl = await uploadCloudinary(localFilePath);
+        if (!imageUrl) {
+            throw new ApiError(SERVER_ERROR.INTERNAL_SERVER_ERROR, "Error while uploading the image"); 
+        }
+
+        const user = await User.findByIdAndUpdate(
+            userId,
+            {
+                $set: {avatar: imageUrl}
+            },
+            {new: true}
+        ).select("-password");
+
+        return user;
+    } catch (error) {
+        console.error("Update User Service Error:", error);
+        if (error instanceof ApiError) {
+            throw error;
+        }
+        throw new ApiError(
+            SERVER_ERROR.INTERNAL_SERVER_ERROR,
+            "Something went wrong while the image."
+        );
+    }
+}
+
 export {
     registerUserService,
     loginUserService,
     logoutUserService,
-    refreshAccessTokenService
+    refreshAccessTokenService,
+    changePasswordService,
+    updateAccountDetailsService,
+    updateImageService
 }
