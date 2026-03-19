@@ -6,7 +6,9 @@ import { registerUserService,
     refreshAccessTokenService,
     changePasswordService,
     updateAccountDetailsService,
-    updateImageService
+    updateImageService,
+    getUserChannelProfileService,
+    getWatchHistoryService
 } from "../services/user.service.js";
 import { CLIENT_ERROR, SUCCESS } from "../constant.js";
 import { ApiError } from "../utils/api-error.js";
@@ -167,6 +169,31 @@ const updateCoverImage = asyncHandler(async (req, res) => {
     
 });
 
+const getUserChannelProfile = asyncHandler(async (req, res) => {
+    const {username} = req.params;
+
+    if (!username) {
+        throw new ApiError(CLIENT_ERROR.BAD_REQUEST_ERROR, "username is required!");
+    }
+
+    const channel = await getUserChannelProfileService(username, req.user._id);
+
+    res.status(SUCCESS.OK).json(new ApiResponse(
+        SUCCESS,
+        channel,
+        "channel details fetched successfully."
+    ))
+});
+
+const getWatchHistory = asyncHandler(async (req, res) => {
+    const history = await getWatchHistoryService(req.user._id);
+    res.status(SUCCESS.OK).json(new ApiResponse(
+        SUCCESS.OK,
+        history,
+        "Watch history fetched successfully!."
+    ))
+})
+
 
 export {
     registerUser,
@@ -177,5 +204,7 @@ export {
     getCurrentUser,
     updateAccountDetails,
     updateAvatarImage,
-    updateCoverImage
+    updateCoverImage,
+    getUserChannelProfile,
+    getWatchHistory
 }

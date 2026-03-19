@@ -3,6 +3,8 @@ import { User } from "../models/user.model.js";
 import { uploadCloudinary } from "../utils/cloudinary.js";
 import { CLIENT_ERROR, SERVER_ERROR } from "../constant.js";
 import { generateAccessAndRefreshToken } from "../utils/helper-methods.js";
+import { changePassword } from "../controllers/user.controller.js";
+import mongoose from "mongoose";
 
 const registerUserService = async (data, files) => {
     try {
@@ -62,14 +64,14 @@ const registerUserService = async (data, files) => {
 
 const loginUserService = async (data) => {
     try {
-        const {username, email, password} = data;
+        const { username, email, password } = data;
 
         if ((!username && !email) || !password) {
             throw new ApiError(CLIENT_ERROR.BAD_REQUEST_ERROR, "Missing Required Fields: [username/email, password]");
         }
 
         const user = await User.findOne({
-            $or: [{username}, {email}]
+            $or: [{ username }, { email }]
         });
 
         if (!user) {
@@ -85,7 +87,7 @@ const loginUserService = async (data) => {
         console.log("user------------", user);
 
         return tokens;
-    
+
     } catch (error) {
         console.error("Login Service Error:", error);
         if (error instanceof ApiError) {
@@ -137,11 +139,11 @@ const changePasswordService = async (oldPassword, newPassword, userId) => {
         const user = await User.findById(userId);
         const isPasswordCorrect = await user.isPasswordCorrect(oldPassword);
         if (!isPasswordCorrect) {
-            throw new ApiError(CLIENT_ERROR.UNAUTHORIZED, "Incorrect Old Password!");            
+            throw new ApiError(CLIENT_ERROR.UNAUTHORIZED, "Incorrect Old Password!");
         }
 
         user.password = newPassword;
-        await user.save({validateBeforeSaving: false});
+        await user.save({ validateBeforeSaving: false });
     } catch (error) {
         console.error("Change Password Service Error:", error);
         if (error instanceof ApiError) {
@@ -156,7 +158,7 @@ const changePasswordService = async (oldPassword, newPassword, userId) => {
 
 const updateAccountDetailsService = async (data, userId) => {
     try {
-        const user = await  User.findByIdAndUpdate(
+        const user = await User.findByIdAndUpdate(
             userId,
             {
                 $set: {
@@ -164,7 +166,7 @@ const updateAccountDetailsService = async (data, userId) => {
                     email: data?.email
                 }
             },
-            {new: true}
+            { new: true }
         ).select("-password");
 
         return user;
@@ -184,15 +186,15 @@ const updateImageService = async (localFilePath, userId) => {
     try {
         const imageUrl = await uploadCloudinary(localFilePath);
         if (!imageUrl) {
-            throw new ApiError(SERVER_ERROR.INTERNAL_SERVER_ERROR, "Error while uploading the image"); 
+            throw new ApiError(SERVER_ERROR.INTERNAL_SERVER_ERROR, "Error while uploading the image");
         }
 
         const user = await User.findByIdAndUpdate(
             userId,
             {
-                $set: {avatar: imageUrl}
+                $set: { avatar: imageUrl }
             },
-            {new: true}
+            { new: true }
         ).select("-password");
 
         return user;
@@ -208,6 +210,140 @@ const updateImageService = async (localFilePath, userId) => {
     }
 }
 
+const getUserChannelProfileService = async (username, userId) => {
+    try {
+        const channel = await User.aggregate([
+            {
+                $match: { username }
+            },
+            {
+                $lookup: {
+                    from: "subscriptions",
+                    localField: "_id",
+                    foreignField: "channel",
+                    as: "subscribers"
+                }
+            },
+            {
+                $lookup: {
+                    from: "subscriptions",
+                    localField: "_id",
+                    foreignField: "channel",
+                    as: "subscribedTo"
+                }
+            },
+            {
+                $addFields: {
+                    subscribersCount: {
+                        $size: "$subscribers"
+                    },
+                    subscribedToCount: {
+                        $size: "$subscribedTo"
+                    },
+                    isSubscribed: {
+                        $cond: {
+                            if: { $in: [userId, "$subscribers.subscriber"] },
+                            then: true,
+                            else: false
+                        }
+                    }
+                }
+            },
+            {
+                $project: {
+                    username: 1,
+                    fullName: 1,
+                    avatar: 1,
+                    coverImage: 1,
+                    email: 1,
+                    subscribersCount: 1,
+                    subscribedToCount: 1,
+                    isSubscribed: 1
+                }
+            }
+        ]);
+        console.log("channel----------", channel);
+
+        if (!channel?.length) {
+            throw new ApiError(CLIENT_ERROR.NOT_FOUND, "Channel not found!")
+        }
+
+        return channel;
+
+    } catch (error) {
+        console.error("Get User Profile Error:", error);
+        if (error instanceof ApiError) {
+            throw error;
+        }
+        throw new ApiError(
+            SERVER_ERROR.INTERNAL_SERVER_ERROR,
+            "Unable to fetch user profile!"
+        );
+    }
+}
+
+const getWatchHistoryService = async (userId) => {
+    try {
+        const user = await User.aggregate([
+            {
+                $match: {
+                    _id: new mongoose.Types.ObjectId(userId)
+                }
+            },
+            {
+                $lookup: {
+                    from: "videos",
+                    localField: "watchHistory",
+                    foreignField: "_id",
+                    as: "watchHistory",
+                    pipeline: [
+                        {
+                            $lookup: {
+                                from: "users",
+                                localField: "owner",
+                                foreignField: "_id",
+                                as: "owner",
+                                pipeline: [
+                                    {
+                                        $project: {
+                                            fullName: 1,
+                                            username: 1,
+                                            avatar: 1
+                                        }
+                                    },
+                                    {
+                                        $addFields: {
+                                            owner: {
+                                                $first: "$owner"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                }
+            }
+        ]);
+
+        if (!user) {
+            throw new ApiError(CLIENT_ERROR.NOT_FOUND, "User not found!");
+        }
+
+        return user.watchHistory;
+
+    } catch (error) {
+        console.error("Get Watch History Error:", error);
+        if (error instanceof ApiError) {
+            throw error;
+        }
+        throw new ApiError(
+            SERVER_ERROR.INTERNAL_SERVER_ERROR,
+            "Unable to fetch watch history!"
+        );
+    }
+}
+
 export {
     registerUserService,
     loginUserService,
@@ -215,5 +351,7 @@ export {
     refreshAccessTokenService,
     changePasswordService,
     updateAccountDetailsService,
-    updateImageService
+    updateImageService,
+    getUserChannelProfileService,
+    getWatchHistoryService
 }
