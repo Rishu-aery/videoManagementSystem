@@ -187,6 +187,7 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
 
 const getWatchHistory = asyncHandler(async (req, res) => {
     const history = await getWatchHistoryService(req.user._id);
+    
     res.status(SUCCESS.OK).json(new ApiResponse(
         SUCCESS.OK,
         history,

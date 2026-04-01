@@ -49,8 +49,6 @@ const registerUserService = async (data, files) => {
         return createdUser;
 
     } catch (error) {
-
-        // Optional: log error (production)
         console.error("Register Service Error:", error);
         if (error instanceof ApiError) {
             throw error;
@@ -326,11 +324,11 @@ const getWatchHistoryService = async (userId) => {
             }
         ]);
 
-        if (!user) {
+        if (!user || user.length === 0) {
             throw new ApiError(CLIENT_ERROR.NOT_FOUND, "User not found!");
         }
-
-        return user.watchHistory;
+    
+        return user[0].watchHistory;
 
     } catch (error) {
         console.error("Get Watch History Error:", error);
